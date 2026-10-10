@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>工作日志分析 · 月度统计图表</title>
+    <!-- 引入 ECharts 核心库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f0f4f9;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            padding: 32px 24px;
+            color: #1e2f3e;
+        }
+
+        .app-container {
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+
+        /* 头部卡片 */
+        .header-card {
+            background: white;
+            border-radius: 32px;
+            padding: 24px 32px;
+            margin-bottom: 28px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 650;
+            background: linear-gradient(135deg, #1e4b5e, #2c6e8f);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .file-area {
+            margin-top: 20px;
+            background: #f8fafc;
+            border-radius: 48px;
+            padding: 12px 20px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border: 1px dashed #cbd5e1;
+        }
+
+        .file-label {
+            background: #eef2ff;
+            padding: 8px 22px;
+            border-radius: 40px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: #1e40af;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-label:hover {
+            background: #e0e7ff;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-status {
+            font-size: 0.85rem;
+            color: #4b6b8a;
+            background: #f1f5f9;
+            padding: 6px 16px;
+            border-radius: 40px;
+        }
+
+        /* 统计看板 (图表区域) */
+        .stats-dashboard {
+            background: white;
+            border-radius: 28px;
+            padding: 20px 24px;
+            margin-bottom: 28px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            border: 1px solid #e9f0f5;
+            display: none;
+        }
+
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            gap: 16px;
+        }
+
+        .stats-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #1f4662;
+        }
+
+        .chart-year-selector {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #f8fafc;
+            padding: 6px 16px;
+            border-radius: 40px;
+        }
+
+        .chart-year-selector label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #2c6280;
+        }
+
+        #chartYearSelect {
+            padding: 6px 12px;
+            border-radius: 30px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        #monthlyChart {
+            width: 100%;
+            height: 380px;
+        }
+
+        /* 筛选栏 */
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+            margin: 20px 0 16px 0;
+            display: none;
+        }
+
+        .filter-item {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .filter-item label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #5c7c9e;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 10px 16px;
+            border-radius: 34px;
+            border: 1px solid #dce5ec;
+            background: white;
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: 0.2s;
+            outline: none;
+        }
+
+        select:focus, input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+
+        .reset-btn {
+            background: #f1f5f9;
+            border: 1px solid #dce5ec;
+            padding: 9px 28px;
+            border-radius: 60px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+
+        .reset-btn:hover {
+            background: #e6edf5;
+        }
+
+        .record-stats {
+            background: #f1f5f9;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+
+        /* 时间轴列表 */
+        .timeline-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            background: white;
+            border-radius: 24px;
+            padding: 14px 22px;
+            transition: 0.2s;
+            border: 1px solid #e9f0f5;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .log-entry:hover {
+            border-color: #cbdff2;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.04);
+            transform: translateY(-1px);
+        }
+
+        .date-badge {
+            min-width: 120px;
+            background: #f8fafc;
+            border-radius: 60px;
+            padding: 5px 16px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #155e75;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .content {
+            flex: 1;
+            font-size: 0.92rem;
+            line-height: 1.45;
+            color: #1e2f3e;
+        }
+
+        .badge-rest {
+            background: #fff0ea;
+            color: #c2410c;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: 40px;
+            margin-left: 10px;
+        }
+
+        .empty-day {
+            color: #9bb3c8;
+            font-style: italic;
+        }
+
+        .no-results {
+            background: white;
+            border-radius: 32px;
+            padding: 48px 24px;
+            text-align: center;
+            color: #6b8aad;
+        }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #7b9bb8;
+            border-top: 1px solid #e2edf5;
+            padding-top: 24px;
+        }
+
+        @media (max-width: 680px) {
+            body { padding: 20px 16px; }
+            .log-entry { flex-direction: column; align-items: flex-start; }
+            .filter-bar { flex-direction: column; }
+            .stats-header { flex-direction: column; align-items: flex-start; }
+            #monthlyChart { height: 280px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="header-card">
+        <h1>📋 研发工作日志 · 智能分析</h1>
+        <div class="file-area">
+            <label for="fileInput" class="file-label">
+                📂 选择本地文件 (工作表.txt)
+            </label>
+            <input type="file" id="fileInput" accept=".txt, .csv, .text/plain">
+            <div class="file-status" id="fileStatus">未加载文件，请选择您的工作表.txt</div>
+        </div>
+    </div>
+
+    <!-- 统计看板：柱状图展示每月工作/休息天数 -->
+    <div class="stats-dashboard" id="statsDashboard">
+        <div class="stats-header">
+            <div class="stats-title">
+                📊 每月工作 vs 休息天数
+                <span style="font-size:0.7rem; background:#eef2ff; padding:2px 8px; border-radius:40px;">柱状图</span>
+            </div>
+            <div class="chart-year-selector">
+                <label>📅 筛选年份：</label>
+                <select id="chartYearSelect">
+                    <option value="all">全部年份</option>
+                </select>
+            </div>
+        </div>
+        <div id="monthlyChart"></div>
+    </div>
+
+    <!-- 筛选栏 (用于记录列表) -->
+    <div class="filter-bar" id="filterBar" style="display: none;">
+        <div class="filter-item">
+            <label>📅 年份筛选</label>
+            <select id="yearFilter"><option value="all">全部年份</option></select>
+        </div>
+        <div class="filter-item">
+            <label>📆 月份筛选</label>
+            <select id="monthFilter">
+                <option value="all">全部月份</option>
+                <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+                <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+                <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+                <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+            </select>
+        </div>
+        <div class="filter-item">
+            <label>🔍 关键词 / 人员</label>
+            <input type="text" id="searchInput" placeholder="姓名/模块/任务" autocomplete="off">
+        </div>
+        <button class="reset-btn" id="resetBtn">⟳ 重置筛选</button>
+        <div class="record-stats" id="recordStats">📄 记录数: 0</div>
+    </div>
+
+    <div id="timelineContainer" class="timeline-grid">
+        <div class="no-results">✨ 请先选择本地工作表文件（支持 txt 格式）</div>
+    </div>
+    <footer>📌 文件需遵循格式: 年份头 + 月.日 工作内容 (支持休息/空白行自动识别) · 图表支持按年筛选展示月度工作/休息天数</footer>
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    // 工作记录解析核心 (支持2025/2026跨年)
+    // --------------------------------------------------------------
+    function parseWorkLogFromText(text) {
+        const lines = text.split(/\r?\n/);
+        let records = [];
+        let currentYear = null;
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (line === "") continue;
+
+            // 匹配年份头 "2025年" 或 "2026年"
+            const yearMatch = line.match(/^(\d{4})年$/);
+            if (yearMatch) {
+                currentYear = parseInt(yearMatch[1], 10);
+                continue;
+            }
+
+            // 匹配日期行: 月.日 内容 (例如 4.21 工作描述)
+            const dateMatch = line.match(/^(\d{1,2})\.(\d{1,2})\s*(.*)$/);
+            if (dateMatch && currentYear !== null) {
+                let month = parseInt(dateMatch[1], 10);
+                let day = parseInt(dateMatch[2], 10);
+                let contentRaw = dateMatch[3].trim();
+
+                const fullDate = `${currentYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const displayDate = `${month}.${day}`;
+                let content = contentRaw === "" ? "（休息/无工作安排）" : contentRaw;
+                let isRest = (contentRaw === "" || contentRaw.includes("休") || contentRaw.includes("休息") || contentRaw.includes("请假"));
+
+                records.push({
+                    fullDate: fullDate,
+                    year: currentYear,
+                    month: month,
+                    day: day,
+                    displayDate: displayDate,
+                    content: content,
+                    isRest: isRest,
+                });
+            }
+        }
+
+        // 按日期排序
+        records.sort((a, b) => a.fullDate.localeCompare(b.fullDate));
+        return records;
+    }
+
+    // 全局变量
+    let globalRecords = [];
+    let chartInstance = null;   // echarts 实例
+
+    // 更新柱状图 (根据选中年份)
+    function updateChart(yearValue) {
+        if (!globalRecords.length) return;
+
+        // 聚合数据：按年月 (YYYY-MM)
+        const monthMap = new Map(); // key: "YYYY-MM", value: { work, rest, year, month }
+        for (let rec of globalRecords) {
+            const key = `${rec.year}-${String(rec.month).padStart(2,'0')}`;
+            if (!monthMap.has(key)) {
+                monthMap.set(key, { year: rec.year, month: rec.month, workDays: 0, restDays: 0 });
+            }
+            const stat = monthMap.get(key);
+            if (rec.isRest) {
+                stat.restDays += 1;
+            } else {
+                stat.workDays += 1;
+            }
+        }
+
+        // 转换为数组并按年月排序
+        let monthlyData = Array.from(monthMap.values()).sort((a, b) => {
+            if (a.year !== b.year) return a.year - b.year;
+            return a.month - b.month;
+        });
+
+        // 按年份筛选
+        if (yearValue !== 'all') {
+            const targetYear = parseInt(yearValue, 10);
+            monthlyData = monthlyData.filter(item => item.year === targetYear);
+        }
+
+        if (monthlyData.length === 0) {
+            if (chartInstance) {
+                chartInstance.clear();
+                chartInstance.setOption({
+                    title: { show: true, text: '暂无该年份数据', left: 'center', top: 'center', textStyle: { color: '#9aaebf', fontSize: 14 } }
+                });
+            }
+            return;
+        }
+
+        // 准备x轴标签 (月份)
+        const xAxisLabels = monthlyData.map(item => `${item.month}月`);
+        const workDays = monthlyData.map(item => item.workDays);
+        const restDays = monthlyData.map(item => item.restDays);
+
+        const option = {
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            legend: { data: ['工作天数', '休息天数'], left: 'left', itemWidth: 25, itemHeight: 14, textStyle: { color: '#2c6280' } },
+            grid: { left: '8%', right: '5%', top: '12%', bottom: '8%', containLabel: true },
+            xAxis: { type: 'category', data: xAxisLabels, axisLabel: { rotate: 0, fontWeight: 500 }, axisLine: { lineStyle: { color: '#b9cee0' } } },
+            yAxis: { type: 'value', name: '天数', nameLocation: 'middle', nameGap: 40, min: 0, axisLabel: { fontSize: 11 }, splitLine: { lineStyle: { type: 'dashed' } } },
+            series: [
+                {
+                    name: '工作天数',
+                    type: 'bar',
+                    data: workDays,
+                    itemStyle: { borderRadius: [8,8,0,0], color: '#3b82f6', shadowColor: 'rgba(59,130,246,0.2)', shadowBlur: 6 },
+                    label: { show: true, position: 'top', fontWeight: 'bold', fontSize: 11 }
+                },
+                {
+                    name: '休息天数',
+                    type: 'bar',
+                    data: restDays,
+                    itemStyle: { borderRadius: [8,8,0,0], color: '#f97316', shadowColor: 'rgba(249,115,22,0.2)', shadowBlur: 6 },
+                    label: { show: true, position: 'top', fontWeight: 'bold', fontSize: 11 }
+                }
+            ]
+        };
+        if (chartInstance) {
+            chartInstance.setOption(option, true);
+        } else {
+            const dom = document.getElementById('monthlyChart');
+            chartInstance = echarts.init(dom);
+            chartInstance.setOption(option);
+            window.addEventListener('resize', () => chartInstance.resize());
+        }
+    }
+
+    // 渲染记录列表（带年月筛选 & 关键词）
+    function renderRecordsList() {
+        if (!globalRecords.length) {
+            document.getElementById('timelineContainer').innerHTML = '<div class="no-results">📂 暂无数据，请先加载有效的工作日志文件</div>';
+            document.getElementById('recordStats').innerText = '📄 记录数: 0';
+            return;
+        }
+
+        const yearFilter = document.getElementById('yearFilter').value;
+        const monthFilter = document.getElementById('monthFilter').value;
+        const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+
+        let filtered = globalRecords.filter(rec => {
+            if (yearFilter !== 'all' && rec.year.toString() !== yearFilter) return false;
+            if (monthFilter !== 'all' && rec.month.toString() !== monthFilter) return false;
+            if (keyword !== '') {
+                const dateMatch = rec.displayDate.includes(keyword);
+                const contentMatch = rec.content.toLowerCase().includes(keyword);
+                return dateMatch || contentMatch;
+            }
+            return true;
+        });
+
+        const container = document.getElementById('timelineContainer');
+        const statsSpan = document.getElementById('recordStats');
+        statsSpan.innerText = `📄 记录数: ${filtered.length} / ${globalRecords.length}`;
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="no-results">✨ 没有匹配的工作记录，试试重置筛选～</div>`;
+            return;
+        }
+
+        let html = '';
+        for (let rec of filtered) {
+            let contentHtml = escapeHtml(rec.content);
+            let restBadge = '';
+            if (rec.isRest || rec.content.includes('休息') || rec.content.includes('请假') || rec.content === '（休息/无工作安排）') {
+                restBadge = '<span class="badge-rest">⚡ 休/假</span>';
+            }
+            if (rec.content === '（休息/无工作安排）') {
+                contentHtml = `<span class="empty-day">${escapeHtml(rec.content)}</span>`;
+            }
+            html += `
+                <div class="log-entry">
+                    <div class="date-badge">
+                        <span class="date-num">${rec.displayDate}</span>
+                        <span style="font-size:0.7rem; color:#6f8eae;">${rec.year}</span>
+                    </div>
+                    <div class="content">
+                        ${contentHtml} ${restBadge}
+                    </div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // 初始化年份下拉框 (记录列表筛选 & 图表年份下拉)
+    function initYearFilters(records) {
+        const yearSet = new Set();
+        records.forEach(rec => yearSet.add(rec.year));
+        const sortedYears = Array.from(yearSet).sort((a,b)=>a-b);
+        
+        // 记录列表年份筛选
+        const yearSelect = document.getElementById('yearFilter');
+        yearSelect.innerHTML = '<option value="all">📆 全部年份</option>';
+        sortedYears.forEach(year => {
+            const opt = document.createElement('option');
+            opt.value = year;
+            opt.textContent = `${year}年`;
+            yearSelect.appendChild(opt);
+        });
+        
+        // 图表年份筛选下拉
+        const chartYearSelect = document.getElementById('chartYearSelect');
+        chartYearSelect.innerHTML = '<option value="all">全部年份</option>';
+        sortedYears.forEach(year => {
+            const opt = document.createElement('option');
+            opt.value = year;
+            opt.textContent = `${year}年`;
+            chartYearSelect.appendChild(opt);
+        });
+        // 默认选中全部年份，展示所有数据
+        chartYearSelect.value = 'all';
+    }
+
+    // 重置所有筛选 (记录列表)
+    function resetFilters() {
+        document.getElementById('yearFilter').value = 'all';
+        document.getElementById('monthFilter').value = 'all';
+        document.getElementById('searchInput').value = '';
+        renderRecordsList();
+    }
+
+    // 绑定UI事件
+    function bindEvents() {
+        document.getElementById('yearFilter').addEventListener('change', () => renderRecordsList());
+        document.getElementById('monthFilter').addEventListener('change', () => renderRecordsList());
+        document.getElementById('searchInput').addEventListener('input', () => renderRecordsList());
+        document.getElementById('resetBtn').addEventListener('click', resetFilters);
+        
+        // 图表年份切换事件
+        document.getElementById('chartYearSelect').addEventListener('change', (e) => {
+            updateChart(e.target.value);
+        });
+    }
+
+    // 处理文件加载后的全流程
+    function onFileLoaded(records, fileName) {
+        globalRecords = records;
+        document.getElementById('fileStatus').innerHTML = `✅ 已加载: ${fileName} (共 ${records.length} 条记录)`;
+        document.getElementById('filterBar').style.display = 'flex';
+        document.getElementById('statsDashboard').style.display = 'block';
+        
+        // 初始化下拉框
+        initYearFilters(globalRecords);
+        // 渲染图表 (默认全部年份)
+        updateChart('all');
+        // 渲染记录列表
+        renderRecordsList();
+        bindEvents();
+    }
+
+    // 文件读取处理
+    function handleFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const content = e.target.result;
+            const parsed = parseWorkLogFromText(content);
+            if (parsed.length === 0) {
+                alert("文件解析失败：未找到有效的日期记录，请检查格式（需包含如“2025年”年份头，以及“4.21 工作内容”格式）");
+                return;
+            }
+            onFileLoaded(parsed, file.name);
+        };
+        reader.onerror = function() {
+            alert("文件读取失败，请重试");
+        };
+        reader.readAsText(file, "UTF-8");
+    }
+
+    // 文件选择监听
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.name.endsWith('.txt') && !file.name.endsWith('.csv')) {
+            alert("请选择 .txt 或 .csv 格式的工作日志文件");
+            return;
+        }
+        handleFile(file);
+    });
+
+    // 拖拽支持
+    const dropArea = document.querySelector('.file-area');
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.style.backgroundColor = '#eef2ff';
+    });
+    dropArea.addEventListener('dragleave', () => {
+        dropArea.style.backgroundColor = '#f8fafc';
+    });
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.style.backgroundColor = '#f8fafc';
+        const file = e.dataTransfer.files[0];
+        if (file && (file.name.endsWith('.txt') || file.name.endsWith('.csv'))) {
+            handleFile(file);
+            document.getElementById('fileInput').files = e.dataTransfer.files;
+        } else {
+            alert("请拖入 .txt 格式的工作日志文件");
+        }
+    });
+</script>
+</body>
+</html>
