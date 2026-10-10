@@ -672,6 +672,26 @@
             alert("请拖入 .txt 格式的工作日志文件");
         }
     });
+        // --------------------------------------------------------------
+    // 新增：页面加载时自动请求默认数据 default-data.txt
+    // --------------------------------------------------------------
+    (async function initDefaultData() {
+        try {
+            // 尝试请求同目录下的 default-data.txt
+            const response = await fetch('./default-data.txt');
+            if (!response.ok) throw new Error('默认数据文件不存在');
+            const text = await response.text();
+            const parsed = parseWorkLogFromText(text);
+            
+            if (parsed.length > 0) {
+                // 复用原有的加载逻辑，把文件名显示为默认数据
+                onFileLoaded(parsed, 'default-data.txt (内置默认数据)');
+            }
+        } catch (error) {
+            console.log('未找到默认数据或加载失败，将保持空白等待本地上传:', error);
+            // 如果没找到文件，页面依然保留之前的提示，不会报错
+        }
+    })();
 </script>
 </body>
 </html>
